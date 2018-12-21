@@ -38,19 +38,23 @@ def get_tidy_df(xls_file, designated_sheet=0):
     df.reset_index(drop=True, inplace=True)
     print("資料框的列數為：{}，投票所個數為：{}".format(
         df.shape[0], df["office"].values[-1] - df["office"].values[0] + 1))
-    wide_df = df
-    long_df = df.drop(
-        axis=1, columns=["invalid_votes", "issued_votes", "remaining_votes"])
-    long_df["id"] = long_df.index
-    long_df = pd.melt(long_df, id_vars=[
-                      'id', 'district', 'village', "office"], value_vars=candidates).drop("id", axis=1)
-    long_df.columns = ["district", "village", "office", "candidate", "votes"]
-    parties = long_df["candidate"].map(lambda x: x.split()[0])
-    candidates = long_df["candidate"].map(lambda x: x.split()[1])
-    long_df.insert(3, "party", parties)
-    long_df["candidate"] = candidates
+    if '　　　 　　　' in list(df.columns):
+        df.drop(columns='　　　 　　　', inplace=True)
+    wide_df = df.copy()
+    long_df_tobe = df.copy()
+    long_df_tobe.drop(
+        axis=1, columns=["invalid_votes", "issued_votes", "remaining_votes"], inplace=True)
+    long_df_tobe = long_df_tobe.assign(id=list(long_df_tobe.index))
+    long_df = pd.melt(long_df_tobe, id_vars=[
+                      'id', 'district', 'village', "office"], value_vars=candidates)
+    long_df.drop(axis=1, columns=["id"], inplace=True)
+    long_df.columns = ["district", "village", "office", "party_candidate", "votes"]
+    new = long_df["party_candidate"].str.split(n = 1, expand=True)
+    long_df["party"] = new[0]
+    long_df["candidate"] = new[1]
+    long_df.drop(axis=1, columns=["party_candidate"], inplace=True)
+    long_df = long_df.loc[:, ["district", "village", "office", "party", "candidate", "votes"]]
     return wide_df, long_df
-
 
 def get_tidy_df_referendum(xls_file, designated_sheet=0):
     """
